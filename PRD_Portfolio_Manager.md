@@ -1,6 +1,6 @@
 # PRD: Personal Portfolio Manager
 
-**Version:** 1.0 | **Date:** 2026-06-26 | **Author:** Simran Modi
+**Version:** 1.1 | **Date:** 2026-06-26 | **Author:** Simran Modi
 
 ---
 
@@ -19,9 +19,99 @@ A personal portfolio management tool — starting as a Google Sheet, then evolvi
 
 ---
 
-## 3. Asset Classes & Attributes
+## 3. One-Time Setup (Initial Configuration)
 
-### 3.1 Stocks (Equity)
+A setup screen that runs on first launch (and is editable later from Settings). All trading, brokerage, and currency defaults flow from this configuration.
+
+### 3.1 Market / Exchange Selection
+
+| Field | Description |
+|---|---|
+| Market — Exchange | Dropdown with selectable market-exchange pairs |
+| Default (v1) | **India : NSE/BSE** — single selectable option |
+| Future additions | USA : NYSE/NASDAQ, UK : LSE, etc. |
+
+- v1: Only one option available — **India : NSE/BSE** (pre-selected, read-only feel but shown as dropdown for future extensibility)
+- Later: multi-select to enable trading across multiple markets simultaneously
+- Exchange selection drives: instrument master list, lot sizes, trading hours, holiday calendar
+
+### 3.2 Currency Selection
+
+| Field | Description |
+|---|---|
+| Base Currency | Dropdown — currency tied to the selected market |
+| Default (v1) | **INR (₹)** — single selectable option |
+| Future additions | USD ($), GBP (£), EUR (€), etc. |
+
+- v1: Only **INR** available, auto-linked to India market
+- Later: when multiple markets are enabled, each market maps to its default currency (USA → USD, etc.)
+- All portfolio values, P&L, and reports display in the base currency
+- Future: currency conversion for cross-market portfolio consolidation
+
+### 3.3 Brokerage Setup
+
+A table-based configuration where the user enters brokerage charges for each product type. These values are auto-applied to every transaction.
+
+#### Brokerage Configuration Table
+
+| Product | Charge Type | Buy Brokerage | Sell Brokerage | Notes |
+|---|---|---|---|---|
+| **Stocks (Delivery)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | e.g., ₹20 or 0.03% | Both sides charged |
+| **Stocks (Intraday)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | ₹0 / 0% | One-sided brokerage — broker charges only on one leg |
+| **Options** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 flat | e.g., ₹20 flat | Per-lot or per-order as per broker |
+| **Futures** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.01% | e.g., ₹20 or 0.01% | Both sides charged |
+| **Mutual Funds** | Fixed (₹) _or_ Variable (%) | ₹0 (typically zero) | ₹0 (exit load handled separately) | Most direct MF platforms charge zero |
+| **ETFs** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | e.g., ₹20 or 0.03% | Treated like equity delivery |
+
+#### Field Details
+
+| Column | Description |
+|---|---|
+| **Product** | Pre-filled rows: Stocks (Delivery), Stocks (Intraday), Options, Futures, Mutual Funds, ETFs |
+| **Charge Type** | Toggle/dropdown: **Fixed (₹)** = flat fee per order, **Variable (%)** = percentage of transaction value |
+| **Buy Brokerage** | Brokerage charged on buy/entry side |
+| **Sell Brokerage** | Brokerage charged on sell/exit side |
+
+#### Brokerage Rules & Behavior
+- **Stocks (Intraday):** Broker typically charges only one-sided brokerage. User enters the charged side (usually buy) and sets the other to ₹0 / 0%.
+- **Variable brokerage cap:** If charge type is Variable, optionally allow a max cap (e.g., 0.03% or max ₹20 — whichever is lower). This matches brokers like Zerodha.
+- **Per-order vs per-lot:** For F&O, clarify if the flat fee is per order or per lot (v1: assume per order, add per-lot toggle later).
+- **MF exit load:** Not brokerage — handled separately in the MF sell flow (exit load % and lock-in period from scheme metadata).
+- **Auto-apply:** When a buy/sell transaction is entered, brokerage is pre-filled from this setup. User can override per transaction.
+- **Editable anytime:** User can update brokerage rates from Settings; changes apply to future transactions only (past transactions retain their recorded charges).
+
+#### Statutory Charges (Auto-Calculated, Non-Editable)
+These are government/exchange mandated and computed automatically on every transaction:
+
+| Charge | Rate | Applied To |
+|---|---|---|
+| **STT (Securities Transaction Tax)** | 0.1% delivery, 0.025% intraday sell, 0.0125% options sell, 0.01% futures sell | As per product |
+| **Exchange Transaction Charges** | ~0.00345% (NSE) | All segments |
+| **GST** | 18% on (brokerage + exchange charges) | All |
+| **SEBI Turnover Fee** | ₹10 per crore | All |
+| **Stamp Duty** | 0.015% (delivery buy), 0.003% (intraday/F&O buy) | Buy side only |
+
+- These rates are pre-configured and updated when regulations change
+- Displayed as a breakdown in each transaction's charges section
+
+### 3.4 Setup Screen Summary
+
+| Step | User Action | v1 Behavior |
+|---|---|---|
+| 1. Market | Select market-exchange | India : NSE/BSE (only option) |
+| 2. Currency | Select base currency | INR (only option) |
+| 3. Brokerage | Fill 6-row brokerage table | Pre-filled with Zerodha defaults, editable |
+| 4. Confirm | Save setup | Configuration saved, proceed to portfolio |
+
+- **Pre-filled defaults:** v1 ships with Zerodha's brokerage rates as defaults (₹20 flat or 0.03% whichever is lower for equity; ₹20 flat for F&O)
+- **Skip option:** User can skip setup → defaults apply, editable later from Settings
+- **Reset:** Option to reset brokerage to defaults
+
+---
+
+## 4. Asset Classes & Attributes
+
+### 4.1 Stocks (Equity)
 | Field | Description |
 |---|---|
 | Symbol / Ticker | NSE/BSE symbol (e.g., RELIANCE, TCS) |
@@ -34,7 +124,7 @@ A personal portfolio management tool — starting as a Google Sheet, then evolvi
 | Broker Name | Zerodha, Groww, Angel One, etc. |
 | Notes | Free-text (e.g., "earnings play", "long-term hold") |
 
-### 3.2 Futures & Options (F&O)
+### 4.2 Futures & Options (F&O)
 | Field | Description |
 |---|---|
 | Underlying Symbol | e.g., NIFTY, BANKNIFTY, RELIANCE |
@@ -52,7 +142,7 @@ A personal portfolio management tool — starting as a Google Sheet, then evolvi
 | Broker Name | Broker used |
 | Notes | Strategy notes (e.g., "hedged with PUT 23000") |
 
-### 3.3 Mutual Funds
+### 4.3 Mutual Funds
 | Field | Description |
 |---|---|
 | Fund Name | Full scheme name |
@@ -67,7 +157,7 @@ A personal portfolio management tool — starting as a Google Sheet, then evolvi
 | Platform | Groww, Kuvera, Coin, MFU, direct AMC |
 | Notes | Free-text |
 
-### 3.4 ETFs
+### 4.4 ETFs
 | Field | Description |
 |---|---|
 | Symbol / Ticker | NSE symbol (e.g., NIFTYBEES, GOLDBEES) |
@@ -81,15 +171,15 @@ A personal portfolio management tool — starting as a Google Sheet, then evolvi
 
 ---
 
-## 4. Core Functionality
+## 5. Core Functionality
 
-### 4.1 Buy (Add to Portfolio)
+### 5.1 Buy (Add to Portfolio)
 - User enters purchase details per asset class (fields above)
 - System validates the instrument exists (see §5 Validations)
 - Entry is added to the holdings ledger
 - Portfolio totals are recalculated
 
-### 4.2 Sell (Reduce from Portfolio)
+### 5.2 Sell (Reduce from Portfolio)
 - User selects existing holding and enters sale details:
   - Sell Date
   - Quantity / Units / Lots sold
@@ -100,7 +190,7 @@ A personal portfolio management tool — starting as a Google Sheet, then evolvi
 - For partial sells, remaining quantity stays in portfolio
 - Realized P&L is calculated and logged in a **Transactions Ledger**
 
-### 4.3 Transactions Ledger
+### 5.3 Transactions Ledger
 Every buy and sell is recorded as an immutable transaction log:
 | Field | Description |
 |---|---|
@@ -119,7 +209,7 @@ Every buy and sell is recorded as an immutable transaction log:
 
 ---
 
-## 5. Validations
+## 6. Validations
 
 | # | Rule | Behavior |
 |---|---|---|
@@ -133,9 +223,9 @@ Every buy and sell is recorded as an immutable transaction log:
 
 ---
 
-## 6. Portfolio Dashboard & Calculations
+## 7. Portfolio Dashboard & Calculations
 
-### 6.1 Current Holdings View
+### 7.1 Current Holdings View
 For each holding, display:
 - **Current Market Price (CMP)** — latest price / NAV
 - **Current Value** — Quantity × CMP
@@ -145,7 +235,7 @@ For each holding, display:
 - **Weight in Portfolio (%)** — Current Value / Total Portfolio Value × 100
 - **Day Change (₹ and %)** — based on previous close
 
-### 6.2 Portfolio-Level Metrics (Weighted Average of All Components)
+### 7.2 Portfolio-Level Metrics (Weighted Average of All Components)
 | Metric | Formula |
 |---|---|
 | **Total Portfolio Value** | Sum of current value of all holdings |
@@ -159,12 +249,12 @@ For each holding, display:
 | **Asset Class Allocation** | % split across Stocks, F&O, MF, ETF |
 | **Sector Allocation** | % split by sector (requires sector mapping for stocks/ETFs) |
 
-### 6.3 Historical Portfolio Value (End-of-Day)
+### 7.3 Historical Portfolio Value (End-of-Day)
 - Store or compute **portfolio value at each market close date**
 - Used for portfolio value chart over time
 - Approach: for each date, sum (holding quantity on that date × closing price on that date)
 
-### 6.4 Real-Time Portfolio Value (Market Hours)
+### 7.4 Real-Time Portfolio Value (Market Hours)
 - During market hours (9:15 AM – 3:30 PM IST, Mon–Fri, non-holiday):
   - Fetch live prices for stocks and ETFs
   - MF NAVs are EOD only (show previous NAV with label "NAV as of [date]")
@@ -178,7 +268,7 @@ For each holding, display:
 
 ---
 
-## 7. Reports & Analytics
+## 8. Reports & Analytics
 
 | Report | Description |
 |---|---|
@@ -191,7 +281,7 @@ For each holding, display:
 
 ---
 
-## 8. Tax & Regulatory Considerations (India-Specific)
+## 9. Tax & Regulatory Considerations (India-Specific)
 
 | Item | Rule |
 |---|---|
@@ -204,9 +294,11 @@ For each holding, display:
 
 ---
 
-## 9. Data Model (Simplified)
+## 10. Data Model (Simplified)
 
 ```
+app_config           (market, exchange, currency, setup_complete)
+brokerage_config     (product, charge_type, buy_brokerage, sell_brokerage)
 instruments          (master list: symbol, name, exchange, asset_class, sector, lot_size, is_active)
 transactions         (id, date, instrument_id, action, qty, price, charges, notes)
 holdings             (derived: instrument_id, total_qty, avg_buy_price — recomputed from transactions)
@@ -217,7 +309,7 @@ dividends            (id, date, instrument_id, amount, type)
 
 ---
 
-## 10. Phase Plan
+## 11. Phase Plan
 
 | Phase | Scope | Platform |
 |---|---|---|
@@ -228,7 +320,7 @@ dividends            (id, date, instrument_id, amount, type)
 
 ---
 
-## 11. Non-Functional Requirements
+## 12. Non-Functional Requirements
 
 - **Single user** — no multi-tenancy needed for v1
 - **Data privacy** — all data stays local or in user's own Google account (Phase 1) / self-hosted DB (Phase 2+)
@@ -238,7 +330,7 @@ dividends            (id, date, instrument_id, amount, type)
 
 ---
 
-## 12. Open Questions / Decisions Needed
+## 13. Open Questions / Decisions Needed
 
 1. **Broker integration priority** — which broker's CSV/contract note format to support first?
 2. **Currency** — INR only, or support USD holdings (US stocks via Vested/INDmoney)?
