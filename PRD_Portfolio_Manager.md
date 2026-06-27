@@ -1,6 +1,6 @@
 # PRD: Personal Portfolio Manager
 
-**Version:** 1.1 | **Date:** 2026-06-26 | **Author:** Simran Modi
+**Version:** 1.2 | **Date:** 2026-06-26 | **Author:** Simran Modi
 
 ---
 
@@ -220,6 +220,8 @@ Every buy and sell is recorded as an immutable transaction log:
 | V5 | **Positive values** | Price, quantity, and amount must be > 0. |
 | V6 | **Date sanity** | Sell date ≥ Buy date. Transaction date ≤ today (no future dating). |
 | V7 | **Duplicate check** | Warn if an identical transaction (same instrument, date, qty, price) already exists. |
+| V8 | **Auto-settle expiring lots** | System must auto-close all F&O positions expiring today at closing price after market close (AP1). No manual intervention required. |
+| V9 | **Daily EOD snapshot** | System must generate a portfolio snapshot every trading day after market close (AP2). Duplicate snapshots for the same date are prevented. |
 
 ---
 
@@ -268,7 +270,102 @@ For each holding, display:
 
 ---
 
-## 8. Reports & Analytics
+## 8. EOD Batch Operations (Post-Market Close)
+
+An automated batch process that runs after market close (after 3:30 PM IST) each trading day. This handles expiry settlement and daily portfolio snapshotting.
+
+### 8.1 Auto-Process List
+
+The following operations run automatically in sequence after market close:
+
+| # | Auto-Process | Description | Trigger |
+|---|---|---|---|
+| **AP1** | **Auto-Settle Expiring F&O Lots** | Close all F&O contracts expiring today by generating sell transactions at closing price | Daily, on expiry dates |
+| **AP2** | **Daily EOD Portfolio Snapshot** | Calculate and store end-of-day portfolio value for all holdings | Daily, every trading day |
+
+### 8.2 AP1 — Auto-Settle Expiring F&O Lots
+
+**Purpose:** F&O contracts that expire today must be closed out. The system auto-generates sell transactions so the portfolio reflects settled positions.
+
+**Process:**
+1. Identify all open F&O holdings where **Expiry Date = Today**
+2. Fetch the **closing price** of each expiring contract from market data
+3. For each expiring lot, auto-create a sell transaction:
+   - Sell Date = Today
+   - Sell Price = Closing price of the contract
+   - Quantity = Full remaining lots held
+   - Action = SELL (auto-settled)
+   - Charges = Brokerage as per setup + statutory charges
+   - Notes = "Auto-settled on expiry"
+   - Source = "SYSTEM_AUTO" (to distinguish from manual trades)
+4. Realized P&L is calculated and logged in the Transactions Ledger
+5. Holding is removed from active portfolio (quantity → 0)
+
+**For Options specifically:**
+- **ITM (In-The-Money) options:** Auto-settled at intrinsic value (closing price of underlying − strike price for calls, strike − closing for puts)
+- **OTM (Out-of-The-Money) options:** Expire worthless — sell transaction at ₹0 (full premium loss realized)
+- **STT on exercised options:** Higher STT rate (0.125%) applied on ITM options exercised at expiry
+
+**Validations for AP1:**
+- Only processes contracts where expiry date matches today's date
+- Skips if no expiring lots exist (no-op)
+- Logs a summary of all auto-settled contracts for user review
+
+### 8.3 AP2 — Daily EOD Portfolio Snapshot
+
+**Purpose:** Capture a daily record of total portfolio value at market close for historical tracking, charts, and performance analysis.
+
+**Process:**
+1. Fetch **closing prices** for all held instruments:
+   - Stocks & ETFs: NSE/BSE closing price
+   - F&O: Settlement price from exchange
+   - Mutual Funds: NAV published by AMC (available by ~11 PM IST; if not yet available, use previous NAV and update when published)
+2. For each holding, calculate:
+   - Current Value = Quantity × Closing Price / NAV
+   - Day Change = Current Value − Previous Day Value
+3. Store a snapshot in the **EOD Portfolio Table**:
+
+#### EOD Portfolio Table Schema
+
+| Field | Description |
+|---|---|
+| Date | Trading date |
+| Total Portfolio Value (₹) | Sum of all holdings at closing price |
+| Total Invested (₹) | Sum of all cost basis |
+| Unrealized P&L (₹) | Total Value − Total Invested |
+| Unrealized P&L (%) | % change from invested |
+| Day Change (₹) | Today's value − Yesterday's value |
+| Day Change (%) | % change from previous day |
+| Realized P&L Today (₹) | P&L from any sells (including auto-settled expiries) today |
+| Asset Breakdown — Stocks (₹) | Stock holdings value |
+| Asset Breakdown — F&O (₹) | F&O holdings value |
+| Asset Breakdown — MF (₹) | Mutual fund holdings value |
+| Asset Breakdown — ETF (₹) | ETF holdings value |
+| Holdings Count | Number of distinct instruments held |
+| Auto-Settled Today | Count of F&O lots auto-settled (0 if none) |
+| Snapshot Status | COMPLETE / PARTIAL (if MF NAV pending) / FAILED |
+
+**Validations for AP2:**
+- Runs only on trading days (skip weekends and NSE holidays)
+- If closing price is unavailable for any instrument, mark snapshot as PARTIAL and retry later
+- Prevents duplicate snapshots for the same date
+- If AP1 ran (expiry settlements), AP2 includes those settled positions in today's realized P&L
+
+### 8.4 Batch Execution Rules
+
+| Rule | Detail |
+|---|---|
+| **Execution order** | AP1 (settle expiries) runs first → AP2 (snapshot) runs after |
+| **Trigger time** | Configurable; default 4:00 PM IST (30 min after market close to allow price feeds to settle) |
+| **Manual trigger** | User can manually trigger the batch from Settings (e.g., if it failed or was missed) |
+| **Re-run safety** | Idempotent — re-running on the same day does not create duplicate transactions or snapshots |
+| **Failure handling** | If AP1 fails, AP2 still runs (they are independent after AP1 completes). Failures are logged. |
+| **Non-trading days** | Batch does not run on weekends or market holidays. Holiday calendar sourced from NSE. |
+| **Audit log** | Each batch run logs: timestamp, processes executed, items affected, status, errors if any |
+
+---
+
+## 9. Reports & Analytics
 
 | Report | Description |
 |---|---|
@@ -281,7 +378,7 @@ For each holding, display:
 
 ---
 
-## 9. Tax & Regulatory Considerations (India-Specific)
+## 10. Tax & Regulatory Considerations (India-Specific)
 
 | Item | Rule |
 |---|---|
@@ -294,22 +391,23 @@ For each holding, display:
 
 ---
 
-## 10. Data Model (Simplified)
+## 11. Data Model (Simplified)
 
 ```
 app_config           (market, exchange, currency, setup_complete)
 brokerage_config     (product, charge_type, buy_brokerage, sell_brokerage)
 instruments          (master list: symbol, name, exchange, asset_class, sector, lot_size, is_active)
-transactions         (id, date, instrument_id, action, qty, price, charges, notes)
+transactions         (id, date, instrument_id, action, qty, price, charges, notes, source[MANUAL/SYSTEM_AUTO])
 holdings             (derived: instrument_id, total_qty, avg_buy_price — recomputed from transactions)
 daily_prices         (instrument_id, date, open, high, low, close, volume)
-portfolio_snapshots  (date, total_value, invested_value, pnl)
+portfolio_eod        (date, total_value, invested_value, unrealized_pnl, day_change, realized_pnl_today, stocks_value, fo_value, mf_value, etf_value, holdings_count, auto_settled_count, status)
+batch_run_log        (id, date, trigger_time, ap1_status, ap1_items, ap2_status, errors)
 dividends            (id, date, instrument_id, amount, type)
 ```
 
 ---
 
-## 11. Phase Plan
+## 12. Phase Plan
 
 | Phase | Scope | Platform |
 |---|---|---|
@@ -320,7 +418,7 @@ dividends            (id, date, instrument_id, amount, type)
 
 ---
 
-## 12. Non-Functional Requirements
+## 13. Non-Functional Requirements
 
 - **Single user** — no multi-tenancy needed for v1
 - **Data privacy** — all data stays local or in user's own Google account (Phase 1) / self-hosted DB (Phase 2+)
@@ -330,7 +428,7 @@ dividends            (id, date, instrument_id, amount, type)
 
 ---
 
-## 13. Open Questions / Decisions Needed
+## 14. Open Questions / Decisions Needed
 
 1. **Broker integration priority** — which broker's CSV/contract note format to support first?
 2. **Currency** — INR only, or support USD holdings (US stocks via Vested/INDmoney)?
