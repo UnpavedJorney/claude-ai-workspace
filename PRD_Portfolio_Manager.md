@@ -1,6 +1,6 @@
 # PRD: Personal Portfolio Manager
 
-**Version:** 1.3 | **Date:** 2026-06-26 | **Author:** Simran Modi
+**Version:** 1.4 | **Date:** 2026-06-26 | **Author:** Simran Modi
 
 ---
 
@@ -57,8 +57,9 @@ A table-based configuration where the user enters brokerage charges for each pro
 | Product | Charge Type | Buy Brokerage | Sell Brokerage | Notes |
 |---|---|---|---|---|
 | **Stocks (Delivery)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | e.g., ₹20 or 0.03% | Both sides charged |
-| **Stocks (Intraday)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | ₹0 / 0% | One-sided brokerage — broker charges only on one leg |
-| **Futures** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.01% | e.g., ₹20 or 0.01% | Both sides charged |
+| **Stocks (Intraday)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | _(blank = none)_ | One-sided; blank = no brokerage on that side |
+| **Futures (Delivery)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | e.g., ₹20 or 0.03% | Both sides charged |
+| **Futures (Intraday)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | _(blank = none)_ | One-sided; blank = no brokerage on that side |
 | **Mutual Funds** | Fixed (₹) _or_ Variable (%) | ₹0 (typically zero) | ₹0 (exit load handled separately) | Most direct MF platforms charge zero |
 | **ETFs** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | e.g., ₹20 or 0.03% | Treated like equity delivery |
 
@@ -66,15 +67,21 @@ A table-based configuration where the user enters brokerage charges for each pro
 
 | Column | Description |
 |---|---|
-| **Product** | Pre-filled rows: Stocks (Delivery), Stocks (Intraday), Futures, Mutual Funds, ETFs |
-| **Charge Type** | Toggle/dropdown: **Fixed (₹)** = flat fee per order, **Variable (%)** = percentage of transaction value |
-| **Buy Brokerage** | Brokerage charged on buy/entry side |
-| **Sell Brokerage** | Brokerage charged on sell/exit side |
+| **Product** | Pre-filled rows: Stocks (Delivery), Stocks (Intraday), Futures (Delivery), Futures (Intraday), Mutual Funds, ETFs |
+| **Charge Type** | Toggle/dropdown: **Fixed (₹)** = flat fee per order (value displayed with ₹ prefix), **Variable (%)** = percentage of transaction value (value displayed with % suffix) |
+| **Buy Brokerage** | Brokerage charged on buy/entry side. Editable, not read-only. |
+| **Sell Brokerage** | Brokerage charged on sell/exit side. Editable, not read-only. Blank/empty = no brokerage on this side. |
+
+#### Brokerage Input Validation
+- **Fixed (₹) values:** Must be a positive number representing rupees (e.g., ₹20). Displayed with ₹ prefix.
+- **Variable (%) values:** Must be between **0.00% and 100.00%** (inclusive). Displayed with % suffix.
+- **Blank fields are valid:** A blank buy or sell field means no brokerage is charged on that side. This is the standard way to represent one-sided brokerage (not a read-only ₹0).
+- **Dynamic formatting:** When charge type is toggled between Fixed and Variable, the input fields switch between ₹ prefix and % suffix automatically.
 
 #### Brokerage Rules & Behavior
-- **Stocks (Intraday):** Broker typically charges only one-sided brokerage. User enters the charged side (usually buy) and sets the other to ₹0 / 0%.
+- **Intraday (Stocks & Futures):** Broker typically charges only one-sided brokerage. User enters the charged side and leaves the other blank. Both fields are editable — the system does not enforce which side is charged.
 - **Variable brokerage cap:** If charge type is Variable, optionally allow a max cap (e.g., 0.03% or max ₹20 — whichever is lower). This matches brokers like Zerodha.
-- **Per-order vs per-lot:** For F&O, clarify if the flat fee is per order or per lot (v1: assume per order, add per-lot toggle later).
+- **Per-order vs per-lot:** For Futures, clarify if the flat fee is per order or per lot (v1: assume per order, add per-lot toggle later).
 - **MF exit load:** Not brokerage — handled separately in the MF sell flow (exit load % and lock-in period from scheme metadata).
 - **Auto-apply:** When a buy/sell transaction is entered, brokerage is pre-filled from this setup. User can override per transaction.
 - **Editable anytime:** User can update brokerage rates from Settings; changes apply to future transactions only (past transactions retain their recorded charges).
@@ -99,10 +106,10 @@ These are government/exchange mandated and computed automatically on every trans
 |---|---|---|
 | 1. Market | Select market-exchange | India : NSE/BSE (only option) |
 | 2. Currency | Select base currency | INR (only option) |
-| 3. Brokerage | Fill 5-row brokerage table | Pre-filled with Zerodha defaults, editable |
+| 3. Brokerage | Fill 6-row brokerage table | Pre-filled with Zerodha defaults, editable |
 | 4. Confirm | Save setup | Configuration saved, proceed to portfolio |
 
-- **Pre-filled defaults:** v1 ships with Zerodha's brokerage rates as defaults (₹20 flat or 0.03% whichever is lower for equity; ₹20 flat for F&O)
+- **Pre-filled defaults:** v1 ships with Zerodha's brokerage rates as defaults (₹20 flat or 0.03% whichever is lower for equity; ₹20 flat for Futures). 6 product rows: Stocks Delivery/Intraday, Futures Delivery/Intraday, MF, ETFs.
 - **Skip option:** User can skip setup → defaults apply, editable later from Settings
 - **Reset:** Option to reset brokerage to defaults
 
@@ -224,6 +231,8 @@ Every buy and sell is recorded as an immutable transaction log:
 | V7 | **Duplicate check** | Warn if an identical transaction (same instrument, date, qty, price) already exists. |
 | V8 | **Auto-settle expiring lots** | System must auto-close all F&O positions expiring today at closing price after market close (AP1). No manual intervention required. |
 | V9 | **Daily EOD snapshot** | System must generate a portfolio snapshot every trading day after market close (AP2). Duplicate snapshots for the same date are prevented. |
+| V10 | **Brokerage charge type format** | When charge type is Fixed (₹), value is displayed/entered with ₹ prefix and must be a positive number. When Variable (%), value is displayed with % suffix and must be between 0.00% and 100.00%. |
+| V11 | **Blank brokerage = no charge** | A blank/empty brokerage field (buy or sell) means no brokerage is charged on that side. Both fields are always editable (never read-only). |
 
 ---
 
