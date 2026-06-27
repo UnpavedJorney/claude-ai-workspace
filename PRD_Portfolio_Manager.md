@@ -1,19 +1,19 @@
 # PRD: Personal Portfolio Manager
 
-**Version:** 1.2 | **Date:** 2026-06-26 | **Author:** Simran Modi
+**Version:** 1.3 | **Date:** 2026-06-26 | **Author:** Simran Modi
 
 ---
 
 ## 1. Overview
 
-A personal portfolio management tool — starting as a Google Sheet, then evolving into a web application — to track, manage, and analyze holdings across **Stocks, Futures & Options (F&O), Mutual Funds (MF), and ETFs** on Indian exchanges.
+A personal portfolio management tool — starting as a Google Sheet, then evolving into a web application — to track, manage, and analyze holdings across **Stocks, Futures (Lots), Mutual Funds (MF), and ETFs** on Indian exchanges. Phase 1 covers Futures only (no Options/PUT/CALL); Options support is deferred to a later phase.
 
 ---
 
 ## 2. User Persona
 
 - Individual retail investor managing a personal portfolio
-- Trades across multiple asset classes (equity, derivatives, MF, ETF)
+- Trades across multiple asset classes (equity, futures, MF, ETF)
 - Needs consolidated view of holdings, P&L, and portfolio health
 - Indian market context (NSE/BSE)
 
@@ -58,7 +58,6 @@ A table-based configuration where the user enters brokerage charges for each pro
 |---|---|---|---|---|
 | **Stocks (Delivery)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | e.g., ₹20 or 0.03% | Both sides charged |
 | **Stocks (Intraday)** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | ₹0 / 0% | One-sided brokerage — broker charges only on one leg |
-| **Options** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 flat | e.g., ₹20 flat | Per-lot or per-order as per broker |
 | **Futures** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.01% | e.g., ₹20 or 0.01% | Both sides charged |
 | **Mutual Funds** | Fixed (₹) _or_ Variable (%) | ₹0 (typically zero) | ₹0 (exit load handled separately) | Most direct MF platforms charge zero |
 | **ETFs** | Fixed (₹) _or_ Variable (%) | e.g., ₹20 or 0.03% | e.g., ₹20 or 0.03% | Treated like equity delivery |
@@ -67,7 +66,7 @@ A table-based configuration where the user enters brokerage charges for each pro
 
 | Column | Description |
 |---|---|
-| **Product** | Pre-filled rows: Stocks (Delivery), Stocks (Intraday), Options, Futures, Mutual Funds, ETFs |
+| **Product** | Pre-filled rows: Stocks (Delivery), Stocks (Intraday), Futures, Mutual Funds, ETFs |
 | **Charge Type** | Toggle/dropdown: **Fixed (₹)** = flat fee per order, **Variable (%)** = percentage of transaction value |
 | **Buy Brokerage** | Brokerage charged on buy/entry side |
 | **Sell Brokerage** | Brokerage charged on sell/exit side |
@@ -85,7 +84,7 @@ These are government/exchange mandated and computed automatically on every trans
 
 | Charge | Rate | Applied To |
 |---|---|---|
-| **STT (Securities Transaction Tax)** | 0.1% delivery, 0.025% intraday sell, 0.0125% options sell, 0.01% futures sell | As per product |
+| **STT (Securities Transaction Tax)** | 0.1% delivery, 0.025% intraday sell, 0.01% futures sell | As per product |
 | **Exchange Transaction Charges** | ~0.00345% (NSE) | All segments |
 | **GST** | 18% on (brokerage + exchange charges) | All |
 | **SEBI Turnover Fee** | ₹10 per crore | All |
@@ -100,7 +99,7 @@ These are government/exchange mandated and computed automatically on every trans
 |---|---|---|
 | 1. Market | Select market-exchange | India : NSE/BSE (only option) |
 | 2. Currency | Select base currency | INR (only option) |
-| 3. Brokerage | Fill 6-row brokerage table | Pre-filled with Zerodha defaults, editable |
+| 3. Brokerage | Fill 5-row brokerage table | Pre-filled with Zerodha defaults, editable |
 | 4. Confirm | Save setup | Configuration saved, proceed to portfolio |
 
 - **Pre-filled defaults:** v1 ships with Zerodha's brokerage rates as defaults (₹20 flat or 0.03% whichever is lower for equity; ₹20 flat for F&O)
@@ -124,25 +123,28 @@ These are government/exchange mandated and computed automatically on every trans
 | Broker Name | Zerodha, Groww, Angel One, etc. |
 | Notes | Free-text (e.g., "earnings play", "long-term hold") |
 
-### 4.2 Futures & Options (F&O)
+### 4.2 Futures (Lots)
+> **Phase 1 scope: Futures only.** Options (PUT/CALL) are deferred to a future phase.
+
 | Field | Description |
 |---|---|
 | Underlying Symbol | e.g., NIFTY, BANKNIFTY, RELIANCE |
-| Instrument Type | Future / Call Option / Put Option |
-| Expiry Date | Contract expiry |
-| Strike Price | For options only |
+| Instrument Type | Future (fixed for Phase 1) |
+| Expiry Date | Contract expiry (monthly/weekly) |
 | Lot Size | Exchange-defined lot size |
 | Number of Lots | Lots purchased |
 | Total Quantity | Lot Size × Number of Lots (auto-calculated) |
 | Buy/Sell Date | Entry date |
-| Entry Price | Premium or futures price per unit |
+| Entry Price | Futures price per unit |
 | Brokerage & Charges | STT, brokerage, GST, stamp duty |
 | Margin Blocked | Initial + exposure margin |
 | Buy Order ID | Broker order reference (optional) |
 | Broker Name | Broker used |
-| Notes | Strategy notes (e.g., "hedged with PUT 23000") |
+| Notes | Free-text (e.g., "NIFTY monthly rollover") |
 
 ### 4.3 Mutual Funds
+> **Phase 1: Lump sum purchases only.** SIP auto-tracking is deferred to Phase 2.
+
 | Field | Description |
 |---|---|
 | Fund Name | Full scheme name |
@@ -150,7 +152,7 @@ These are government/exchange mandated and computed automatically on every trans
 | Fund Category | Equity / Debt / Hybrid / ELSS / Index / Sectoral |
 | Folio Number | AMC folio reference |
 | Purchase Date | Date of investment |
-| Purchase Type | Lump Sum / SIP |
+| Purchase Type | Lump Sum (Phase 1); SIP added in Phase 2 |
 | Amount Invested (₹) | Rupees invested |
 | NAV at Purchase | Net Asset Value on purchase date |
 | Units Allotted | Amount / NAV (auto-calculated) |
@@ -301,11 +303,6 @@ The following operations run automatically in sequence after market close:
 4. Realized P&L is calculated and logged in the Transactions Ledger
 5. Holding is removed from active portfolio (quantity → 0)
 
-**For Options specifically:**
-- **ITM (In-The-Money) options:** Auto-settled at intrinsic value (closing price of underlying − strike price for calls, strike − closing for puts)
-- **OTM (Out-of-The-Money) options:** Expire worthless — sell transaction at ₹0 (full premium loss realized)
-- **STT on exercised options:** Higher STT rate (0.125%) applied on ITM options exercised at expiry
-
 **Validations for AP1:**
 - Only processes contracts where expiry date matches today's date
 - Skips if no expiring lots exist (no-op)
@@ -403,6 +400,7 @@ daily_prices         (instrument_id, date, open, high, low, close, volume)
 portfolio_eod        (date, total_value, invested_value, unrealized_pnl, day_change, realized_pnl_today, stocks_value, fo_value, mf_value, etf_value, holdings_count, auto_settled_count, status)
 batch_run_log        (id, date, trigger_time, ap1_status, ap1_items, ap2_status, errors)
 dividends            (id, date, instrument_id, amount, type)
+import_log           (id, import_date, source_broker, file_name, records_imported, status)
 ```
 
 ---
@@ -411,10 +409,10 @@ dividends            (id, date, instrument_id, amount, type)
 
 | Phase | Scope | Platform |
 |---|---|---|
-| **Phase 1** | Google Sheet with all buy/sell entry, validations via Apps Script, basic portfolio view, EOD value tracking | Google Sheets |
-| **Phase 2** | Web app — migrate data model, full CRUD, transaction ledger, dashboard with charts | Web Application |
-| **Phase 3** | Real-time prices, XIRR/CAGR calculations, tax reports, alerts | Web Application |
-| **Phase 4** | Broker CSV import (Zerodha, Groww contract notes), auto-reconciliation | Web Application |
+| **Phase 1** | Google Sheet — Stocks, Futures (lots), MF (lump sum), ETF buy/sell. Validations via Apps Script. Basic portfolio view. EOD batch (auto-settle expiring futures, daily snapshot). One-time DEMAT snapshot import. INR only. | Google Sheets |
+| **Phase 2** | Web app — full CRUD, transaction ledger, dashboard with charts. SIP auto-tracking for MF. Alerts (price, P&L threshold, SIP due dates). Create/manage/delete alert rules. | Web Application |
+| **Phase 3** | Real-time prices, XIRR/CAGR calculations, tax reports. Options (PUT/CALL) support. F&O strategy grouping (spreads, straddles). Multi-currency support. | Web Application |
+| **Phase 4** | Broker API integration (if available). Broker CSV import (Zerodha, Groww contract notes). Auto-reconciliation. | Web Application |
 
 ---
 
@@ -428,15 +426,64 @@ dividends            (id, date, instrument_id, amount, type)
 
 ---
 
-## 14. Open Questions / Decisions Needed
+## 14. Decisions Taken
 
-1. **Broker integration priority** — which broker's CSV/contract note format to support first?
-2. **Currency** — INR only, or support USD holdings (US stocks via Vested/INDmoney)?
-3. **SIP tracking** — auto-generate recurring SIP entries or manual each time?
-4. **Alerts** — price alerts, P&L threshold alerts, SIP due date reminders?
-5. **F&O strategy grouping** — group legs of a spread/straddle as a single strategy?
-6. **Historical data backfill** — import existing portfolio from broker statements, or start fresh?
+| # | Question | Decision | Phase |
+|---|---|---|---|
+| D1 | **Broker integration** | Not needed now. Will integrate via Broker API if/when available. | Phase 4 |
+| D2 | **Currency** | INR only for now. Multi-currency (USD, etc.) deferred. | Phase 1 = INR; Phase 3 = multi |
+| D3 | **SIP tracking** | Deferred. Phase 1 supports only lump sum MF purchases. SIP auto-generation added in Phase 2. | Phase 2 |
+| D4 | **Alerts** | Deferred. Create/manage/delete alerts (price, P&L threshold, SIP due dates) added in Phase 2. | Phase 2 |
+| D5 | **F&O scope** | Phase 1 supports **Futures (lots) only**. No Options (PUT/CALL) transactions. Options and strategy grouping (spreads, straddles) deferred. | Phase 1 = Futures; Phase 3 = Options |
+| D6 | **Historical data backfill** | One-time option to upload current DEMAT portfolio snapshot. System also works clean-slate without any backfill. | Phase 1 |
 
 ---
 
-*Next step: Review this PRD, discuss open questions, then finalize technology stack for Phase 1 (Google Sheet) and Phase 2 (Web App).*
+## 15. Assumptions & Constraints
+
+| # | Assumption |
+|---|---|
+| A1 | **Single market:** India (NSE/BSE) only in Phase 1. Global markets added later. |
+| A2 | **Single currency:** INR only in Phase 1. No forex conversion needed. |
+| A3 | **No Options:** PUT/CALL contracts are out of scope for Phase 1. Only simple Futures (lot-based) are supported. |
+| A4 | **No SIP automation:** MF SIP entries are manually entered as individual lump sum transactions in Phase 1. |
+| A5 | **No alerts:** No price alerts, P&L notifications, or reminders in Phase 1. |
+| A6 | **No broker integration:** No API or CSV import from brokers in Phase 1. All entries are manual. |
+| A7 | **DEMAT import is optional:** User can import a one-time snapshot of their current DEMAT holdings to bootstrap the portfolio, but the system must work fully without it. |
+| A8 | **Free market data:** Real-time/delayed price data sourced from free APIs (Yahoo Finance, NSE unofficial, AMFI). No paid data subscriptions required. |
+
+---
+
+## 16. One-Time DEMAT Portfolio Import (Phase 1)
+
+**Purpose:** Allow users to bootstrap their portfolio by uploading a current snapshot of holdings from their DEMAT account, instead of manually entering every historical transaction.
+
+### 16.1 Import Flow
+1. User downloads holdings statement from broker (Zerodha Console, Groww, Angel One, etc.)
+2. User uploads the file (CSV/Excel format)
+3. System parses and maps columns to internal fields
+4. User reviews parsed data, corrects any mapping errors
+5. On confirm, system creates BUY transactions for each holding:
+   - Buy Date = original purchase date (if available in statement) or import date
+   - Buy Price = average buy price from statement
+   - Quantity = current holding quantity
+   - Source = "DEMAT_IMPORT"
+   - Notes = "Imported from DEMAT snapshot on [date]"
+
+### 16.2 Supported Formats (v1)
+| Broker | Format | Notes |
+|---|---|---|
+| Zerodha (Console) | CSV export from Holdings page | Symbol, Qty, Avg Price, LTP |
+| Groww | CSV/Excel download | Fund Name, Units, NAV, Invested |
+| Generic | User-mapped CSV | Column mapping UI for any broker |
+
+### 16.3 Import Rules
+- One-time use recommended (run once to bootstrap, then use manual entry going forward)
+- Can be re-run, but warns about potential duplicates
+- Does not import transaction history — only current snapshot (point-in-time holdings)
+- Imported holdings are treated as regular holdings for all calculations
+- If average buy price is unavailable, user must enter it manually
+
+---
+
+*Next step: Finalize technology stack for Phase 1 (Google Sheet) and Phase 2 (Web App).*
