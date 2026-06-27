@@ -1,6 +1,6 @@
 # PRD: Personal Portfolio Manager
 
-**Version:** 1.4 | **Date:** 2026-06-26 | **Author:** Simran Modi
+**Version:** 1.5 | **Date:** 2026-06-26 | **Author:** Simran Modi
 
 ---
 
@@ -492,6 +492,307 @@ import_log           (id, import_date, source_broker, file_name, records_importe
 - Does not import transaction history — only current snapshot (point-in-time holdings)
 - Imported holdings are treated as regular holdings for all calculations
 - If average buy price is unavailable, user must enter it manually
+
+---
+
+## 17. UI Wireframes
+
+This section documents the wireframe layouts for the three primary screens. These serve as the reference for both the Google Sheet (Phase 1) and Web App (Phase 2) implementations.
+
+### 17.1 Screen Map
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    APPLICATION FLOW                      │
+│                                                         │
+│  ┌──────────┐    ┌──────────────┐    ┌───────────────┐  │
+│  │  Setup   │───▶│  Dashboard   │───▶│  Transaction  │  │
+│  │  Wizard  │    │  (Holdings)  │    │  Entry Form   │  │
+│  └──────────┘    └──────┬───────┘    └───────────────┘  │
+│   First launch          │                               │
+│   only (or Settings)    ▼                               │
+│                  ┌──────────────┐                        │
+│                  │  EOD Batch   │                        │
+│                  │  (Auto/BG)   │                        │
+│                  └──────────────┘                        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 17.2 Screen 1 — Setup Wizard (One-Time / Settings)
+
+A 4-step wizard that runs on first launch. Accessible later from Settings.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ⚙  Initial setup                                      │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐   │
+│  │ 1.Market │ │2.Currency│ │3.Broker- │ │4.Confirm │   │
+│  │  (done)  │ │  (done)  │ │  age ●   │ │          │   │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘   │
+│                                                         │
+│  Step 3 of 4 — Brokerage charges  [Zerodha defaults]   │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Product          │ Charge │ Buy       │ Sell       ││
+│  │                  │ Type   │ Brokerage │ Brokerage  ││
+│  ├──────────────────┼────────┼───────────┼────────────┤│
+│  │ Stocks (deliv.)  │[Var %]▼│ [0.03 ]% │ [0.03 ]%  ││
+│  │ Stocks (intra.)  │[Var %]▼│ [0.03 ]% │ [      ]  ││
+│  │ Futures (deliv.) │[Var %]▼│ [0.03 ]% │ [0.03 ]%  ││
+│  │ Futures (intra.) │[Var %]▼│ [0.03 ]% │ [      ]  ││
+│  │ Mutual Funds     │[Fix ₹]▼│ [₹   0 ] │ [₹   0 ]  ││
+│  │ ETFs             │[Var %]▼│ [0.03 ]% │ [0.03 ]%  ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                         │
+│  ℹ  Blank sell/buy field = no brokerage on that side   │
+│                                                         │
+│  ┌─ Validation rules ─────────────────────────────────┐ │
+│  │ ✓ Fixed (₹): positive number, displayed with ₹    │ │
+│  │ ✓ Variable (%): 0.00% – 100.00%, displayed with % │ │
+│  │ ✓ Blank = no brokerage (valid for one-sided)       │ │
+│  │ ✓ Variable can have optional max cap (e.g. max ₹20)│ │
+│  │ ✓ Statutory charges auto-calculated separately     │ │
+│  └────────────────────────────────────────────────────┘ │
+│                                                         │
+│                    [← Back]  [Reset defaults]  [Next →] │
+└─────────────────────────────────────────────────────────┘
+
+Step 4 — Confirm:
+┌─────────────────────────────────────────────────────────┐
+│  Step 4 of 4 — Review and confirm                      │
+│  ┌─────────────────────┐ ┌─────────────────────┐       │
+│  │ Market              │ │ Currency            │       │
+│  │ India : NSE / BSE   │ │ INR (₹)             │       │
+│  └─────────────────────┘ └─────────────────────┘       │
+│  ┌──────────────────────────────────────────────┐       │
+│  │ Brokerage preset                             │       │
+│  │ Zerodha defaults — 6 products configured     │       │
+│  └──────────────────────────────────────────────┘       │
+│  ℹ  You can change these settings anytime              │
+│                                                         │
+│              [← Back]  [Skip setup]  [✓ Save & start]  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 17.3 Screen 2 — Holdings Dashboard (Main Screen)
+
+The primary view after setup. Shows portfolio summary, asset allocation, and holdings table.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  📊 Portfolio dashboard              [● Market open] [↻]│
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌────────────┐
+│  │ PORTFOLIO   │ │ INVESTED    │ │UNREALIZED   │ │ REALIZED   │
+│  │ VALUE       │ │             │ │ P&L         │ │ P&L        │
+│  │ ₹12,45,830  │ │ ₹10,50,000  │ │+₹1,95,830  │ │ +₹32,150   │
+│  │ +₹8,420 ▲   │ │ 14 holdings │ │ +18.65%  ▲  │ │ FY 2026-27 │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └────────────┘
+│                                                         │
+│  Asset allocation                                       │
+│  ████████████████████████░░░░░░░░░▓▓▓▓▓▓▓▓░░░░░        │
+│  ● Stocks 52%  ● Futures 18%  ● MF 20%  ● ETFs 10%    │
+│                                                         │
+│  Show: [All●] [Stocks] [Futures] [MF] [ETFs]  🔍[___] │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ Instrument       │ Qty    │Avg Cost│ CMP   │Current ││
+│  │                  │        │        │       │ Value  ││
+│  │                  │        │        │       │P&L     ││
+│  │                  │        │        │       │Weight  ││
+│  ├──────────────────┼────────┼────────┼───────┼────────┤│
+│  │ RELIANCE [Stock] │     50 │ ₹2,420 │₹2,685 │₹1,34,250│
+│  │                  │        │        │       │+₹13,250│
+│  │                  │        │        │       │(+10.9%)│
+│  │                  │        │        │       │ 10.8%  │
+│  ├──────────────────┼────────┼────────┼───────┼────────┤│
+│  │ TCS [Stock]      │     30 │ ₹3,580 │₹3,890 │₹1,16,700│
+│  │                  │        │        │       │+₹9,300 │
+│  │                  │        │        │       │(+8.7%) │
+│  │                  │        │        │       │  9.4%  │
+│  ├──────────────────┼────────┼────────┼───────┼────────┤│
+│  │ NIFTY JUL FUT    │ 2 lots │₹23,450 │₹23,820│₹1,19,100│
+│  │ [Future]         │        │        │       │+₹18,500│
+│  │                  │        │        │       │(+2.4%) │
+│  │                  │        │        │       │  9.6%  │
+│  ├──────────────────┼────────┼────────┼───────┼────────┤│
+│  │ Axis Bluechip    │  2,450 │ ₹42.10 │₹48.65 │₹1,19,193│
+│  │ Fund [MF]        │  units │        │       │+₹16,043│
+│  │                  │        │        │       │(+15.6%)│
+│  │                  │        │        │       │  9.6%  │
+│  ├──────────────────┼────────┼────────┼───────┼────────┤│
+│  │ NIFTYBEES [ETF]  │    400 │  ₹235  │ ₹252  │₹1,00,800│
+│  │                  │        │        │       │+₹6,800 │
+│  │                  │        │        │       │(+7.2%) │
+│  │                  │        │        │       │  8.1%  │
+│  ├──────────────────┼────────┼────────┼───────┼────────┤│
+│  │ INFY [Stock]     │     75 │ ₹1,520 │₹1,410 │₹1,05,750│
+│  │                  │        │        │       │−₹8,250 │
+│  │                  │        │        │       │(−7.2%) │
+│  │                  │        │        │       │  8.5%  │
+│  └─────────────────────────────────────────────────────┘│
+│                                                         │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │ 🕐 Last EOD: 25 Jun 2026, 4:00 PM — ₹12,37,410    ││
+│  │ 🤖 Next batch: Today 4:00 PM                       ││
+│  └─────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────┘
+```
+
+### 17.4 Screen 3 — Buy / Sell Transaction Entry
+
+Adaptive form that changes fields based on action (Buy/Sell) and asset class.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ＋ New transaction                                     │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌──────────────────────┬──────────────────────┐        │
+│  │   ▼ BUY (green bg)   │     SELL             │        │
+│  └──────────────────────┴──────────────────────┘        │
+│                                                         │
+│  [Stock ●] [Future] [Mutual fund] [ETF]                │
+│                                                         │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │                                                     ││
+│  │  STOCK FORM:                                        ││
+│  │  ┌────────────────────┐ ┌────────────────────┐      ││
+│  │  │ Symbol / ticker    │ │ Exchange           │      ││
+│  │  │ [RELIANCE      ]   │ │ [NSE          ]▼   │      ││
+│  │  │ Must be NSE/BSE    │ │                    │      ││
+│  │  └────────────────────┘ └────────────────────┘      ││
+│  │  ┌────────────────────┐ ┌────────────────────┐      ││
+│  │  │ Date               │ │ Trade type         │      ││
+│  │  │ [2026-06-26    ]   │ │ [Delivery     ]▼   │      ││
+│  │  └────────────────────┘ └────────────────────┘      ││
+│  │  ┌────────────────────┐ ┌────────────────────┐      ││
+│  │  │ Quantity           │ │ Price per share (₹) │      ││
+│  │  │ [50            ]   │ │ [2420          ]   │      ││
+│  │  └────────────────────┘ └────────────────────┘      ││
+│  │  ┌────────────────────┐ ┌────────────────────┐      ││
+│  │  │ Broker             │ │ Order ID (optional)│      ││
+│  │  │ [Zerodha      ]▼   │ │ [              ]   │      ││
+│  │  └────────────────────┘ └────────────────────┘      ││
+│  │  ┌──────────────────────────────────────────┐       ││
+│  │  │ Notes (optional)                         │       ││
+│  │  │ [e.g. long-term hold, earnings play  ]   │       ││
+│  │  └──────────────────────────────────────────┘       ││
+│  │                                                     ││
+│  │  ┌─ Charges breakdown (auto-calculated) ──────────┐ ││
+│  │  │ Brokerage (0.03%, max ₹20)         ₹20.00     │ ││
+│  │  │ STT (0.1%)                         ₹121.00    │ ││
+│  │  │ Exchange charges                    ₹4.18      │ ││
+│  │  │ GST (18%)                           ₹4.35      │ ││
+│  │  │ SEBI fee                            ₹0.12      │ ││
+│  │  │ Stamp duty                         ₹18.15     │ ││
+│  │  │────────────────────────────────────────────│    ││
+│  │  │ Total charges                      ₹167.80    │ ││
+│  │  │ Net transaction value           ₹1,21,167.80  │ ││
+│  │  └────────────────────────────────────────────────┘ ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                         │
+│                          [Cancel]  [✓ Confirm buy]      │
+└─────────────────────────────────────────────────────────┘
+
+When SELL is selected:
+┌─────────────────────────────────────────────────────────┐
+│  ⚠ Sell validation: system will check you hold          │
+│    sufficient quantity before confirming.                │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Asset-specific form variations:**
+
+```
+FUTURE FORM:                          MUTUAL FUND FORM:
+┌────────────────────────────┐        ┌────────────────────────────┐
+│ Underlying    [NIFTY    ]  │        │ Fund name   [Search...  ]  │
+│ Expiry date   [31 Jul  ]▼  │        │ AMC         [Auto-fill  ]  │
+│ Lot size      [25      ]   │        │ Category    [Equity    ]▼  │
+│ No. of lots   [2       ]   │        │ Folio no.   [          ]  │
+│ Total qty     [50 auto ]   │        │ Purchase dt [2026-06-26]  │
+│ Entry price   [₹23,450 ]   │        │ Amount (₹)  [50000     ]  │
+│ Date          [2026-06-26] │        │ NAV         [42.10     ]  │
+│ Margin (₹)    [         ]  │        │ Units       [1187.65 a ]  │
+│ Broker        [Zerodha ]▼  │        │ Platform    [Groww    ]▼  │
+│ Notes         [         ]  │        │ Notes       [         ]   │
+└────────────────────────────┘        └────────────────────────────┘
+
+ETF FORM:
+┌────────────────────────────┐
+│ Symbol        [NIFTYBEES]  │
+│ Category      [Equity  ]▼  │
+│ Date          [2026-06-26] │
+│ Quantity      [400      ]  │
+│ Price (₹)     [235      ]  │
+│ Broker        [Zerodha ]▼  │
+│ Notes         [         ]  │
+└────────────────────────────┘
+```
+
+### 17.5 Navigation & Screen States
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      NAVIGATION BAR                          │
+│  [📊 Dashboard]  [＋ New Transaction]  [📋 Transactions]     │
+│  [📈 Reports]  [📥 Import]  [⚙ Settings]                    │
+└──────────────────────────────────────────────────────────────┘
+
+Screen States:
+┌──────────────┬───────────────────────────────────────────────┐
+│ Screen       │ States                                        │
+├──────────────┼───────────────────────────────────────────────┤
+│ Setup        │ Step 1–4 (wizard flow)                        │
+│              │ Skip → uses defaults                          │
+│ Dashboard    │ Market open (live refresh, green badge)        │
+│              │ Market closed (static, gray badge)             │
+│              │ Empty state (no holdings — show onboarding)    │
+│ Transaction  │ Buy mode (green accent)                       │
+│              │ Sell mode (red accent)                         │
+│              │ Validation error (instrument not found)        │
+│              │ Short-sell blocked (insufficient qty)          │
+│ EOD Batch    │ Running (progress indicator)                  │
+│              │ Complete (success summary)                     │
+│              │ Partial (MF NAV pending)                       │
+│              │ Failed (error log)                             │
+└──────────────┴───────────────────────────────────────────────┘
+```
+
+### 17.6 Color & Visual Language
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ ASSET CLASS BADGES                                           │
+│  [Stock]  — Blue badge      (#E6F1FB bg, #0C447C text)      │
+│  [Future] — Purple badge    (#EEEDFE bg, #3C3489 text)      │
+│  [MF]     — Teal badge      (#E1F5EE bg, #085041 text)      │
+│  [ETF]    — Amber badge     (#FAEEDA bg, #633806 text)      │
+├──────────────────────────────────────────────────────────────┤
+│ P&L COLORS                                                   │
+│  Profit  — Green text (semantic success color)               │
+│  Loss    — Red text (semantic danger color)                  │
+├──────────────────────────────────────────────────────────────┤
+│ ACTION COLORS                                                │
+│  Buy     — Green background accent                           │
+│  Sell    — Red background accent                             │
+├──────────────────────────────────────────────────────────────┤
+│ STATUS BADGES                                                │
+│  Market open   — Green dot + "Market open"                   │
+│  Market closed — Gray dot + "Market closed"                  │
+│  EOD Complete  — Green "COMPLETE"                            │
+│  EOD Partial   — Amber "PARTIAL"                             │
+│  EOD Failed    — Red "FAILED"                                │
+├──────────────────────────────────────────────────────────────┤
+│ ALLOCATION BAR COLORS                                        │
+│  Stocks   — Blue   (#85B7EB)                                │
+│  Futures  — Purple (#AFA9EC)                                │
+│  MF       — Teal   (#5DCAA5)                                │
+│  ETFs     — Amber  (#FAC775)                                │
+└──────────────────────────────────────────────────────────────┘
+```
 
 ---
 
